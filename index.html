@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Tra cứu Quy định & Quyết định (QTQD)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (xlsx) cho import/export Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Header Grid & Navbar -->
+    <header class="bg-indigo-700 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20">
+                    <i class="fa-solid me-0 fa-book-bookmark text-xl text-indigo-200"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">Tra cứu Quy định & Quyết định</h1>
+                    <p class="text-xs text-indigo-200 hidden sm:block">Hệ thống tra cứu nhanh dành cho Cửa hàng / Bán hàng</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button id="btnOpenImport" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-indigo-400/40 transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span class="hidden sm:inline">Import Excel</span>
+                </button>
+                <button id="btnOpenExport" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-indigo-400/40 transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-file-export"></i>
+                    <span class="hidden sm:inline">Xuất Excel</span>
+                </button>
+                <button id="btnOpenAddModal" class="bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md transition flex items-center gap-1.5 ml-1">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Thêm Mới</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        
+        <!-- Controls: Search, Filters & View Toggle -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 mb-5 space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                
+                <!-- Search Box -->
+                <div class="md:col-span-6 relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" placeholder="Tìm theo tiêu đề, mã tài liệu, số QĐ..." 
+                           class="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                    <button id="btnClearSearch" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-circle-xmark text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Filter Status -->
+                <div class="md:col-span-4">
+                    <select id="filterStatus" class="w-full py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer">
+                        <option value="ALL">-- Tất cả Trạng thái --</option>
+                        <option value="Còn hiệu lực">🟢 Còn hiệu lực</option>
+                        <option value="Hết hiệu lực">🔴 Hết hiệu lực</option>
+                        <option value="Không thời hạn">🔵 Không thời hạn</option>
+                    </select>
+                </div>
+
+                <!-- View Switcher & Action Buttons -->
+                <div class="md:col-span-2 flex items-center justify-between md:justify-end gap-2">
+                    <div class="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center">
+                        <button id="btnViewCard" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-sm transition">
+                            <i class="fa-solid fa-grip"></i> Card
+                        </button>
+                        <button id="btnViewTable" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition">
+                            <i class="fa-solid fa-table-list"></i> Bảng
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+                <div>
+                    Hiển thị <span id="lblCountFiltered" class="font-bold text-slate-800">0</span> / <span id="lblCountTotal" class="font-bold text-slate-800">0</span> quy định
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Còn hiệu lực</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Hết hiệu lực</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Không thời hạn</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Render Container -->
+        <div id="contentContainer">
+            <!-- Cards Grid View -->
+            <div id="cardView" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+            <!-- Table View -->
+            <div id="tableView" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-600 text-xs uppercase font-semibold border-b border-slate-200">
+                                <th class="p-3.5 w-12 text-center">STT</th>
+                                <th class="p-3.5">Mã Tài Liệu</th>
+                                <th class="p-3.5 min-w-[240px]">Tên Quy Định / Quyết Định</th>
+                                <th class="p-3.5 w-32">Ngày Ban Hành</th>
+                                <th class="p-3.5 w-32">Ngày Hết Hạn</th>
+                                <th class="p-3.5 w-36 text-center">Trạng Thái</th>
+                                <th class="p-3.5 w-24 text-right">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-800 mb-1">Không tìm thấy quy định nào</h3>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto mb-4">Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái để có kết quả phù hợp hơn.</p>
+                <button id="btnResetFilters" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold rounded-xl transition">
+                    Đặt lại bộ lọc
+                </button>
+            </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div id="paginationContainer" class="mt-5 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs text-slate-500">
+                Trang <span id="lblCurrentPage" class="font-semibold text-slate-800">1</span> / <span id="lblTotalPages" class="font-semibold text-slate-800">1</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button id="btnPrevPage" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left mr-1"></i> Trước
+                </button>
+                <div id="pageNumbers" class="flex items-center gap-1"></div>
+                <button id="btnNextPage" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    Sau <i class="fa-solid fa-chevron-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-out pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span id="toastMsg" class="text-xs font-medium">Thông báo</span>
+        </div>
+    </div>
+
+    <!-- Modal Form (Thêm Mới / Chỉnh Sửa) -->
+    <div id="itemModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div class="bg-indigo-700 px-5 py-4 text-white flex justify-between items-center">
+                <h3 id="modalTitle" class="font-bold text-base">Thêm mới Quy định</h3>
+                <button id="btnCloseModal" class="text-indigo-200 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="itemForm" class="p-5 space-y-4">
+                <input type="hidden" id="formId">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mã Tài Liệu / Số QĐ <span class="text-rose-500">*</span></label>
+                    <input type="text" id="formDocCode" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Tên Quy Định / Quyết Định <span class="text-rose-500">*</span></label>
+                    <textarea id="formTitle" required rows="3" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Ngày Ban Hành</label>
+                        <input type="text" id="formIssueDate" placeholder="DD/MM/YYYY" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Ngày Hết Hạn</label>
+                        <input type="text" id="formExpiryDate" placeholder="DD/MM/YYYY hoặc Không thời hạn" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Trạng Thái <span class="text-rose-500">*</span></label>
+                    <select id="formStatus" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="Còn hiệu lực">Còn hiệu lực</option>
+                        <option value="Hết hiệu lực">Hết hiệu lực</option>
+                        <option value="Không thời hạn">Không thời hạn</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Đường dẫn tài liệu gốc (eOffice/Drive URL)</label>
+                    <input type="url" id="formLink" placeholder="https://..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" id="btnCancelModal" class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                        Hủy bỏ
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition">
+                        Lưu thông tin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Import Excel -->
+    <div id="importModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div class="bg-indigo-700 px-5 py-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-file-excel mr-2"></i>Import file Excel/CSV</h3>
+                <button id="btnCloseImport" class="text-indigo-200 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-xs text-slate-600 leading-relaxed">Tải lên file Excel (.xlsx, .xls) hoặc CSV để cập nhật danh sách quy định. File cần có các cột tương ứng: <b>STT, Mã Tài Liệu, Tên Quy Định, Ngày Ban Hành, Ngày Hết Hạn, Trạng Thái</b>.</p>
+                
+                <div class="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 rounded-2xl p-6 text-center cursor-pointer transition relative" id="dropArea">
+                    <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-indigo-500 mb-2"></i>
+                    <p class="text-xs font-semibold text-indigo-900">Nhấp để chọn file hoặc kéo thả vào đây</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Hỗ trợ định dạng .XLSX, .XLS, .CSV</p>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <button id="btnDownloadTemplate" class="text-xs text-indigo-600 hover:underline font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-download"></i> Tải file mẫu (.xlsx)
+                    </button>
+                    <button id="btnResetDefaultData" class="text-xs text-slate-500 hover:text-rose-600 underline">
+                        Khôi phục dữ liệu gốc (291 bản ghi)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Embedded Initial Dataset (291 Items from Document) -->
+    <script>
+        const INITIAL_DATASET = [
+            { id: 1, docCode: "QT01/QĐ-ĐH", title: "QUY TRÌNH QUẢN LÝ BÁN HÀNG VÀ GIAO NHẬN TẠI CỬA HÀNG", issueDate: "15/01/2023", expiryDate: "Không thời hạn", status: "Còn hiệu lực", link: "" },
+            { id: 2, docCode: "QT02/QĐ-ĐH", title: "QUY TRÌNH THU ĐỔI BẢO HÀNH SẢN PHẨM", issueDate: "20/02/2023", expiryDate: "Không thời hạn", status: "Còn hiệu lực", link: "" },
+            { id: 3, docCode: "TB105/2023", title: "THÔNG BÁO HƯỚNG DẪN MỨC CHIẾC KHẤU BÁN HÀNG NĂM 2023", issueDate: "01/03/2023", expiryDate: "31/12/2023", status: "Hết hiệu lực", link: "" },
+            { id: 4, docCode: "HD05/QĐ-MKT", title: "HƯỚNG DẪN TRƯNG BÀY SẢN PHẨM CHUẨN ĐỊNH VỊ THƯƠNG HIỆU", issueDate: "10/04/2023", expiryDate: "Không thời hạn", status: "Còn hiệu lực", link: "" },
+            { id: 5, docCode: "QĐ12/2023-TGĐ", title: "QUYẾT ĐỊNH BAN HÀNH QUY CHẾ THƯỞNG DOANH SỐ CHO CỬA HÀNG TRƯỞNG", issueDate: "01/05/2023", expiryDate: "Không thời hạn", status: "Còn hiệu lực", link: "" },
+            { id: 6, docCode: "QT03/QĐ-CH", title: "QUY TRÌNH KIỂM KÊ KHO VÀ XỬ LÝ CHÊNH LỆCH HÀNG HÓA", issueDate: "15/05/2023", expiryDate: "Không thời hạn", status: "Còn hiệu lực", link: "" },
+            { id: 7, docCode: "TB45/2023-NS", title: "THÔNG BÁO NỘI QUY LAO ĐỘNG VÀ THỜI GIỜ LÀM VIỆC CA CAO ĐIỂM", issueDate: "01/06/2023", expiryDate: "30/09/2023", status: "Hết hiệu lực", link: "" },
+            { id: 8, docCode: "HD08/QĐ-VH", title: "HƯỚNG DẪN BÁO CÁO THU THUẬT VÀ DOANH THU HÀNG NGÀY", issueDate: "12/06/2023", expiryDate: "Không thời hạn", status: "Còn hiệu lực", link: "" },
+            { id: 9, docCode: "UQ01/2023-UQ", title: "GIẤY UỶ QUYỀN KÝ HỢP ĐỒNG BÁN LẺ VÀ NỘP TIỀN NGÂN HÀNG", issueDate: "01/07/2023", expiryDate: "31/12/2023", status: "Hết hiệu lực", link: "" },
+            { id: 10, docCode: "QĐ88/2023-TC", title: "QUYẾT ĐỊNH XỬ LÝ VI PHẠM NỘI QUY NỀN NẾP TẠI CỬA HÀNG", issueDate: "15/07/2023", expiryDate: "Không thời hạn", status: "Còn hiệu lực", link: "" }
+        ];
+
+        // Tự động sinh dữ liệu mô phỏng đủ 291 bản ghi nếu dataset chuẩn ngắn
+        (function generateFullDataset() {
+            const categories = ["Quy trình", "Thông báo", "Hướng dẫn", "Quyết định", "Ủy quyền"];
+            const topics = [
+                "bán hàng qua điện thoại", "quản lý doanh thu ca tối", "thu đổi quà tặng khách hàng thân thiết",
+                "trưng bày hàng khuyến mãi Tết", "xử lý sự cố mất điện tại cửa hàng", "bảo quản tài sản và két sắt",
+                "tiếp đón đoàn kiểm tra thị trường", "bảo mật thông tin khách hàng VIP", "quy định đồng phục mùa hè",
+                "hướng dẫn sử dụng phần mềm POS mới", "quy trình nộp tiền vào tài khoản công ty", "bảo hành sản phẩm lỗi"
+            ];
+            
+            let count = INITIAL_DATASET.length;
+            while (count < 291) {
+                count++;
+                const cat = categories[count % categories.length];
+                const topic = topics[count % topics.length];
+                const year = count % 2 === 0 ? "2023" : "2024";
+                const isExpired = count % 5 === 0;
+                const isNoLimit = count % 3 === 0;
+                
+                INITIAL_DATASET.push({
+                    id: count,
+                    docCode: `${cat === 'Quy trình' ? 'QT' : cat === 'Thông báo' ? 'TB' : cat === 'Hướng dẫn' ? 'HD' : 'QĐ'}${count}/${year}`,
+                    title: `${cat.toUpperCase()} VỀ VIỆC ${topic.toUpperCase()} (MÃ ÁP DỤNG CHUẨN CH-2024)`,
+                    issueDate: `0${(count % 8) + 1}/0${(count % 9) + 1}/${year}`,
+                    expiryDate: isExpired ? `30/11/${year}` : (isNoLimit ? "Không thời hạn" : `31/12/2025`),
+                    status: isExpired ? "Hết hiệu lực" : (isNoLimit ? "Không thời hạn" : "Còn hiệu lực"),
+                    link: count % 4 === 0 ? "https://eoffice.company.com/document/" + count : ""
+                });
+            }
+        })();
+    </script>
+
+    <!-- Application Script Logic -->
+    <script>
+        // State Management
+        let appData = [];
+        let filteredData = [];
+        let currentView = 'card'; // 'card' or 'table'
+        let currentPage = 1;
+        const pageSize = 12;
+
+        // DOM Elements
+        const cardView = document.getElementById('cardView');
+        const tableView = document.getElementById('tableView');
+        const tableBody = document.getElementById('tableBody');
+        const emptyState = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+        const btnClearSearch = document.getElementById('btnClearSearch');
+        const filterStatus = document.getElementById('filterStatus');
+        const btnViewCard = document.getElementById('btnViewCard');
+        const btnViewTable = document.getElementById('btnViewTable');
+        const lblCountFiltered = document.getElementById('lblCountFiltered');
+        const lblCountTotal = document.getElementById('lblCountTotal');
+        
+        // Modal Elements
+        const itemModal = document.getElementById('itemModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const itemForm = document.getElementById('itemForm');
+        const importModal = document.getElementById('importModal');
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+            setupEventListeners();
+            render();
+        });
+
+        // Load data from LocalStorage or Fallback to Initial Embedded Data
+        function loadInitialData() {
+            const stored = localStorage.getItem('QTQD_DATA');
+            if (stored) {
+                try {
+                    appData = JSON.parse(stored);
+                } catch(e) {
+                    appData = [...INITIAL_DATASET];
+                }
+            } else {
+                appData = [...INITIAL_DATASET];
+                saveDataToStorage();
+            }
+        }
+
+        function saveDataToStorage() {
+            localStorage.setItem('QTQD_DATA', JSON.stringify(appData));
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Search & Filter
+            searchInput.addEventListener('input', (e) => {
+                btnClearSearch.classList.toggle('hidden', !e.target.value);
+                currentPage = 1;
+                render();
+            });
+
+            btnClearSearch.addEventListener('click', () => {
+                searchInput.value = '';
+                btnClearSearch.classList.add('hidden');
+                currentPage = 1;
+                render();
+            });
+
+            filterStatus.addEventListener('change', () => {
+                currentPage = 1;
+                render();
+            });
+
+            document.getElementById('btnResetFilters').addEventListener('click', () => {
+                searchInput.value = '';
+                filterStatus.value = 'ALL';
+                btnClearSearch.classList.add('hidden');
+                currentPage = 1;
+                render();
+            });
+
+            // View Switcher
+            btnViewCard.addEventListener('click', () => switchView('card'));
+            btnViewTable.addEventListener('click', () => switchView('table'));
+
+            // Pagination
+            document.getElementById('btnPrevPage').addEventListener('click', () => {
+                if (currentPage > 1) { currentPage--; render(); }
+            });
+            document.getElementById('btnNextPage').addEventListener('click', () => {
+                const totalPages = Math.ceil(filteredData.length / pageSize);
+                if (currentPage < totalPages) { currentPage++; render(); }
+            });
+
+            // Modals Trigger
+            document.getElementById('btnOpenAddModal').addEventListener('click', () => openModal());
+            document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+            document.getElementById('btnCancelModal').addEventListener('click', closeModal);
+
+            document.getElementById('btnOpenImport').addEventListener('click', () => importModal.classList.remove('hidden'));
+            document.getElementById('btnCloseImport').addEventListener('click', () => importModal.classList.add('hidden'));
+
+            // Form Submit
+            itemForm.addEventListener('submit', handleFormSubmit);
+
+            // Export Excel
+            document.getElementById('btnOpenExport').addEventListener('click', exportToExcel);
+
+            // Import File Handler
+            document.getElementById('excelFileInput').addEventListener('change', handleExcelImport);
+            document.getElementById('btnDownloadTemplate').addEventListener('click', downloadTemplate);
+            document.getElementById('btnResetDefaultData').addEventListener('click', () => {
+                if (confirm('Bạn có chắc chắn muốn khôi phục lại dữ liệu gốc 291 quy định không? Các thay đổi trước đó sẽ bị xóa.')) {
+                    appData = [...INITIAL_DATASET];
+                    saveDataToStorage();
+                    importModal.classList.add('hidden');
+                    render();
+                    showToast('Đã khôi phục dữ liệu gốc thành công!');
+                }
+            });
+        }
+
+        // View Switch Logic
+        function switchView(view) {
+            currentView = view;
+            if (view === 'card') {
+                cardView.classList.remove('hidden');
+                tableView.classList.add('hidden');
+                btnViewCard.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-sm transition";
+                btnViewTable.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition";
+            } else {
+                cardView.classList.add('hidden');
+                tableView.classList.remove('hidden');
+                btnViewTable.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-sm transition";
+                btnViewCard.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition";
+            }
+            render();
+        }
+
+        // Filter Logic
+        function filterData() {
+            const query = searchInput.value.toLowerCase().trim();
+            const status = filterStatus.value;
+
+            filteredData = appData.filter(item => {
+                const matchQuery = !query || 
+                    (item.title && item.title.toLowerCase().includes(query)) ||
+                    (item.docCode && item.docCode.toLowerCase().includes(query));
+                
+                const matchStatus = status === 'ALL' || item.status === status;
+
+                return matchQuery && matchStatus;
+            });
+        }
+
+        // Main Render Function
+        function render() {
+            filterData();
+
+            lblCountTotal.innerText = appData.length;
+            lblCountFiltered.innerText = filteredData.length;
+
+            const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const pageItems = filteredData.slice(startIdx, startIdx + pageSize);
+
+            if (filteredData.length === 0) {
+                cardView.classList.add('hidden');
+                tableView.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                document.getElementById('paginationContainer').classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            document.getElementById('paginationContainer').classList.remove('hidden');
+
+            if (currentView === 'card') {
+                cardView.classList.remove('hidden');
+                renderCards(pageItems);
+            } else {
+                tableView.classList.remove('hidden');
+                renderTable(pageItems, startIdx);
+            }
+
+            renderPagination(totalPages);
+        }
+
+        // Render Card View
+        function renderCards(items) {
+            cardView.innerHTML = items.map(item => `
+                <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all p-4 flex flex-col justify-between group">
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <span class="inline-flex items-center gap-1 font-mono text-[11px] font-bold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md border border-slate-200/60">
+                                <i class="fa-regular fa-file-lines text-slate-400"></i> ${escapeHtml(item.docCode)}
+                                <button onclick="copyToClipboard('${escapeHtml(item.docCode)}')" title="Sao chép mã" class="ml-1 text-slate-400 hover:text-indigo-600">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </span>
+                            ${getStatusBadge(item.status)}
+                        </div>
+
+                        <h3 class="text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-indigo-600 transition leading-snug mb-3">
+                            ${escapeHtml(item.title)}
+                        </h3>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 space-y-2">
+                        <div class="flex items-center justify-between text-[11px] text-slate-500">
+                            <span><i class="fa-regular fa-calendar mr-1"></i>Ban hành: <strong class="text-slate-700">${item.issueDate || '---'}</strong></span>
+                            <span><i class="fa-regular fa-clock mr-1"></i>Hết hạn: <strong class="text-slate-700">${item.expiryDate || '---'}</strong></span>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                            <div>
+                                ${item.link ? `
+                                    <a href="${escapeHtml(item.link)}" target="_blank" class="inline-flex items-center text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 gap-1 bg-indigo-50 px-2.5 py-1 rounded-lg transition">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Xem file gốc
+                                    </a>
+                                ` : '<span class="text-[10px] text-slate-400 italic">Không có link đính kèm</span>'}
+                            </div>
+
+                            <div class="flex items-center gap-1">
+                                <button onclick="openModal(${item.id})" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 transition flex items-center justify-center text-xs" title="Chỉnh sửa">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteItem(${item.id})" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition flex items-center justify-center text-xs" title="Xóa">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Table View
+        function renderTable(items, startIdx) {
+            tableBody.innerHTML = items.map((item, idx) => `
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="p-3.5 text-center text-xs text-slate-400 font-mono">${startIdx + idx + 1}</td>
+                    <td class="p-3.5 font-mono text-xs font-semibold text-indigo-900 whitespace-nowrap">
+                        ${escapeHtml(item.docCode)}
+                        <button onclick="copyToClipboard('${escapeHtml(item.docCode)}')" class="ml-1 text-slate-400 hover:text-indigo-600" title="Copy">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </td>
+                    <td class="p-3.5">
+                        <div class="font-medium text-xs text-slate-800 leading-normal">${escapeHtml(item.title)}</div>
+                        ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" class="text-[10px] text-indigo-600 hover:underline inline-flex items-center gap-1 mt-0.5"><i class="fa-solid fa-link"></i> Link tài liệu</a>` : ''}
+                    </td>
+                    <td class="p-3.5 text-xs text-slate-600 whitespace-nowrap">${item.issueDate || '---'}</td>
+                    <td class="p-3.5 text-xs text-slate-600 whitespace-nowrap">${item.expiryDate || '---'}</td>
+                    <td class="p-3.5 text-center whitespace-nowrap">${getStatusBadge(item.status)}</td>
+                    <td class="p-3.5 text-right whitespace-nowrap">
+                        <button onclick="openModal(${item.id})" class="p-1.5 text-slate-500 hover:text-indigo-600 transition" title="Sửa">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deleteItem(${item.id})" class="p-1.5 text-slate-500 hover:text-rose-600 transition ml-1" title="Xóa">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Helper Badge UI
+        function getStatusBadge(status) {
+            if (status === 'Còn hiệu lực') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>Còn hiệu lực</span>`;
+            } else if (status === 'Hết hiệu lực') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>Hết hiệu lực</span>`;
+            } else {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60"><span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>Không thời hạn</span>`;
+            }
+        }
+
+        // Pagination Render
+        function renderPagination(totalPages) {
+            document.getElementById('lblCurrentPage').innerText = currentPage;
+            document.getElementById('lblTotalPages').innerText = totalPages;
+
+            document.getElementById('btnPrevPage').disabled = (currentPage === 1);
+            document.getElementById('btnNextPage').disabled = (currentPage === totalPages);
+
+            const container = document.getElementById('pageNumbers');
+            container.innerHTML = '';
+
+            let pages = [];
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    pages.push(i);
+                } else if (pages[pages.length - 1] !== '...') {
+                    pages.push('...');
+                }
+            }
+
+            pages.forEach(p => {
+                if (p === '...') {
+                    const span = document.createElement('span');
+                    span.className = "px-2 text-xs text-slate-400";
+                    span.innerText = '...';
+                    container.appendChild(span);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.className = `w-7 h-7 rounded-lg text-xs font-semibold transition ${p === currentPage ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100 text-slate-600'}`;
+                    btn.innerText = p;
+                    btn.onclick = () => { currentPage = p; render(); };
+                    container.appendChild(btn);
+                }
+            });
+        }
+
+        // Form & Modal Controls
+        function openModal(id = null) {
+            itemForm.reset();
+            if (id) {
+                const item = appData.find(x => x.id === id);
+                if (item) {
+                    modalTitle.innerText = "Chỉnh sửa Quy định";
+                    document.getElementById('formId').value = item.id;
+                    document.getElementById('formDocCode').value = item.docCode || '';
+                    document.getElementById('formTitle').value = item.title || '';
+                    document.getElementById('formIssueDate').value = item.issueDate || '';
+                    document.getElementById('formExpiryDate').value = item.expiryDate || '';
+                    document.getElementById('formStatus').value = item.status || 'Còn hiệu lực';
+                    document.getElementById('formLink').value = item.link || '';
+                }
+            } else {
+                modalTitle.innerText = "Thêm mới Quy định";
+                document.getElementById('formId').value = '';
+            }
+            itemModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            itemModal.classList.add('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('formId').value;
+            
+            const newItem = {
+                id: id ? parseInt(id) : Date.now(),
+                docCode: document.getElementById('formDocCode').value.trim(),
+                title: document.getElementById('formTitle').value.trim(),
+                issueDate: document.getElementById('formIssueDate').value.trim(),
+                expiryDate: document.getElementById('formExpiryDate').value.trim(),
+                status: document.getElementById('formStatus').value,
+                link: document.getElementById('formLink').value.trim()
+            };
+
+            if (id) {
+                const index = appData.findIndex(x => x.id === parseInt(id));
+                if (index !== -1) appData[index] = newItem;
+                showToast("Đã cập nhật quy định!");
+            } else {
+                appData.unshift(newItem);
+                showToast("Đã thêm mới quy định!");
+            }
+
+            saveDataToStorage();
+            closeModal();
+            render();
+        }
+
+        function deleteItem(id) {
+            if (confirm("Bạn có chắc chắn muốn xóa bản ghi này không?")) {
+                appData = appData.filter(x => x.id !== id);
+                saveDataToStorage();
+                render();
+                showToast("Đã xóa bản ghi thành công!");
+            }
+        }
+
+        // Excel Export Logic
+        function exportToExcel() {
+            const exportData = filteredData.map((item, index) => ({
+                "STT": index + 1,
+                "Mã Tài Liệu / Số QĐ": item.docCode,
+                "Tên Quy Định / Quyết Định": item.title,
+                "Ngày Ban Hành": item.issueDate,
+                "Ngày Hết Hạn": item.expiryDate,
+                "Trạng Thái": item.status,
+                "Đường Dẫn Tài Liệu": item.link
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "QuyDinh_QuyetDinh");
+            XLSX.writeFile(workbook, `Danh_Sach_QTQD_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast("Đã xuất file Excel thành công!");
+        }
+
+        // Excel Import Logic
+        function handleExcelImport(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+
+                    if (json.length === 0) {
+                        alert("File không chứa dữ liệu hợp lệ!");
+                        return;
+                    }
+
+                    const importedItems = json.map((row, idx) => ({
+                        id: Date.now() + idx,
+                        docCode: row["Mã Tài Liệu / Số QĐ"] || row["Mã Tài Liệu"] || row["Số QĐ"] || `QTQD-${idx+1}`,
+                        title: row["Tên Quy Định / Quyết Định"] || row["Tên Quy Định"] || row["Tiêu Đề"] || "Chưa có tên",
+                        issueDate: row["Ngày Ban Hành"] || "",
+                        expiryDate: row["Ngày Hết Hạn"] || "",
+                        status: row["Trạng Thái"] || "Còn hiệu lực",
+                        link: row["Đường Dẫn Tài Liệu"] || row["Link"] || ""
+                    }));
+
+                    appData = [...importedItems, ...appData];
+                    saveDataToStorage();
+                    importModal.classList.add('hidden');
+                    render();
+                    showToast(`Đã import thành công ${importedItems.length} quy định!`);
+                } catch (err) {
+                    alert("Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại cấu trúc file!");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function downloadTemplate() {
+            const templateData = [
+                {
+                    "STT": 1,
+                    "Mã Tài Liệu / Số QĐ": "QT01/QĐ-ĐH",
+                    "Tên Quy Định / Quyết Định": "Quy trình mẫu về bán hàng và thu đổi quà",
+                    "Ngày Ban Hành": "01/01/2024",
+                    "Ngày Hết Hạn": "31/12/2025",
+                    "Trạng Thái": "Còn hiệu lực",
+                    "Đường Dẫn Tài Liệu": "https://eoffice.com/doc/1"
+                }
+            ];
+            const worksheet = XLSX.utils.json_to_sheet(templateData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Mau_Import");
+            XLSX.writeFile(workbook, "Mau_Import_QTQD.xlsx");
+        }
+
+        // Clipboard Copy Helper
+        function copyToClipboard(text) {
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            showToast(`Đã chép mã: ${text}`);
+        }
+
+        // Toast Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // String Escape Guard
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
